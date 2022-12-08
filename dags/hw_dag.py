@@ -4,6 +4,7 @@ import sys
 
 from airflow.models import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.bash import BashOperator
 
 path = os.path.expanduser('~/airflow_hw')
 # Добавим путь к коду проекта в переменную окружения, чтобы он был доступен python-процессу
@@ -12,7 +13,7 @@ os.environ['PROJECT_PATH'] = path
 sys.path.insert(0, path)
 
 from modules.pipeline import pipeline
-# <YOUR_IMPORTS>
+from modules.predict import predict
 
 args = {
     'owner': 'airflow',
@@ -27,9 +28,21 @@ with DAG(
         schedule_interval="00 15 * * *",
         default_args=args,
 ) as dag:
+    first_task = BashOperator(
+        task_id='first_task',
+        bash_command='echo "Here we start"',
+        dag=dag,
+    )
     pipeline = PythonOperator(
         task_id='pipeline',
         python_callable=pipeline,
+        dag=dag,
     )
-    # <YOUR_CODE>
+    predict = PythonOperator(
+        task_id='predict',
+        python_callable=predict,
+        dag=dag,
+    )
+
+    first_task >> pipeline >> predict
 
